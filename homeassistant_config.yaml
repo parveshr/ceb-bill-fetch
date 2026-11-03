@@ -1,0 +1,62 @@
+# ==============================================================================
+# HOME ASSISTANT CONFIGURATION: MAURITIUS CEB ELECTRICITY BILLS
+# ==============================================================================
+# Endpoint: https://mru-gateway.mauritius.workers.dev/v1/ceb
+# Documentation: https://mru-gateway.mauritius.workers.dev/docs
+# ==============================================================================
+
+rest:
+  - resource: "https://mru-gateway.mauritius.workers.dev/v1/ceb"
+    scan_interval: 3600
+    headers:
+      Accept: "application/json"
+    sensor:
+      - name: "CEB Total Amount Due"
+        unique_id: "ceb_total_amount_due"
+        value_template: "{{ value_json.summary.total_due_amount | default(0) }}"
+        unit_of_measurement: "MUR"
+        device_class: "monetary"
+        state_class: "total"
+        icon: "mdi:lightning-bolt"
+        json_attributes_path: "$.summary"
+        json_attributes:
+          - total_accounts
+          - currency
+
+      - name: "CEB Account 1 Due"
+        unique_id: "ceb_account_1_due"
+        value_template: "{{ value_json.accounts[0].total_due | default(0) if value_json.accounts | length > 0 else 0 }}"
+        unit_of_measurement: "MUR"
+        device_class: "monetary"
+        icon: "mdi:flash"
+        json_attributes_path: "$.accounts[0]"
+        json_attributes:
+          - account_number
+          - customer_name
+          - bills_detail
+          - status
+
+      - name: "CEB Account 2 Due"
+        unique_id: "ceb_account_2_due"
+        value_template: "{{ value_json.accounts[1].total_due | default(0) if value_json.accounts | length > 1 else 0 }}"
+        unit_of_measurement: "MUR"
+        device_class: "monetary"
+        icon: "mdi:flash"
+        json_attributes_path: "$.accounts[1]"
+        json_attributes:
+          - account_number
+          - customer_name
+          - bills_detail
+          - status
+
+      - name: "CEB Last Synced"
+        unique_id: "ceb_last_synced"
+        value_template: "{{ value_json.last_updated }}"
+        device_class: "timestamp"
+        icon: "mdi:clock-check-outline"
+
+rest_command:
+  refresh_ceb_bills:
+    url: "https://mru-gateway.mauritius.workers.dev/v1/ceb?action=refresh"
+    method: GET
+

@@ -141,24 +141,26 @@ function scrapeSingleCebAccount(accountNumber) {
 
     const resHtml = postResp.getContentText();
 
-    // Check for disconnection / account error alert
-    if (resHtml.indexOf('callloc()') !== -1 || resHtml.indexOf('Please try again later') !== -1) {
-      return {
-        account_number: cleanAcc,
-        customer_name: 'Not Found / Disconnected',
-        total_due: 0,
-        bills_detail: '',
-        status: 'not_found_or_disconnected',
-        last_checked: new Date().toISOString()
-      };
-    }
-
     // Extract Account Name
-    let customerName = 'Unknown';
+    let customerName = '';
     const nameMatch = resHtml.match(/id="catext"[^>]*value="([^"]*)"/i) || 
                       resHtml.match(/value="([^"]*)"[^>]*id="catext"/i);
     if (nameMatch && nameMatch[1].trim()) {
       customerName = nameMatch[1].trim();
+    }
+
+    // Check for disconnection / account error alert if no name found
+    if (!customerName) {
+      if (resHtml.indexOf('callloc();') !== -1 || resHtml.indexOf('Please try again later') !== -1 || resHtml.indexOf('Your account may be disconnected') !== -1) {
+        return {
+          account_number: cleanAcc,
+          customer_name: 'Not Found / Disconnected',
+          total_due: 0,
+          bills_detail: '',
+          status: 'not_found_or_disconnected',
+          last_checked: new Date().toISOString()
+        };
+      }
     }
 
     // Extract Total Amount Due
@@ -176,12 +178,18 @@ function scrapeSingleCebAccount(accountNumber) {
       billsDetail = billMatch[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
     }
 
+    const isZeroBalance = resHtml.indexOf('no outstanding balance') !== -1 || totalDue === 0;
+    const status = isZeroBalance ? 'no_outstanding_bills' : 'active';
+    if (isZeroBalance && !billsDetail) {
+      billsDetail = 'No outstanding balance';
+    }
+
     return {
       account_number: cleanAcc,
-      customer_name: customerName,
+      customer_name: customerName || 'CEB Customer',
       total_due: totalDue,
       bills_detail: billsDetail,
-      status: 'active',
+      status: status,
       last_checked: new Date().toISOString()
     };
 

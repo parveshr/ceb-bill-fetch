@@ -38,7 +38,7 @@ function fetchAndPushCebBills(accountsOverride) {
     }
 
     if (accountsToScrape.length === 0) {
-      accountsToScrape = ['10001234', '10005678']; // Default placeholder pair
+      accountsToScrape = ['000120336984', '000117117537']; // Default user accounts
     }
 
     const accountResults = [];

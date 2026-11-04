@@ -227,7 +227,13 @@ function doGet(e) {
     const refreshResult = fetchAndPushCebBills(targetAccounts);
     if (refreshResult.success) {
       const resp = refreshResult.data;
+      resp.cached_source = 'live_refresh';
       resp.cache_source = 'live_refresh';
+      resp.cache_info = {
+        status: 'BYPASS_REFRESH',
+        source: 'live_refresh',
+        cached_at: resp.last_updated
+      };
       return jsonResponse(resp);
     } else {
       return jsonResponse({
@@ -242,8 +248,15 @@ function doGet(e) {
   try {
     const memoryData = CacheService.getScriptCache().get(CACHE_KEY);
     if (memoryData) {
-      return ContentService.createTextOutput(memoryData)
-                           .setMimeType(ContentService.MimeType.JSON);
+      const parsed = JSON.parse(memoryData);
+      parsed.cached_source = 'ram_cache';
+      parsed.cache_source = 'ram_cache';
+      parsed.cache_info = {
+        status: 'HIT',
+        source: 'ram_cache',
+        cached_at: parsed.last_updated
+      };
+      return jsonResponse(parsed);
     }
   } catch (_) {}
 
@@ -255,6 +268,18 @@ function doGet(e) {
       CacheService.getScriptCache().put(CACHE_KEY, propData, CACHE_TTL_SECONDS);
     } catch (_) {}
 
+    try {
+      const parsed = JSON.parse(propData);
+      parsed.cached_source = 'script_properties';
+      parsed.cache_source = 'script_properties';
+      parsed.cache_info = {
+        status: 'HIT_KV',
+        source: 'script_properties',
+        cached_at: parsed.last_updated
+      };
+      return jsonResponse(parsed);
+    } catch (_) {}
+
     return ContentService.createTextOutput(propData)
                          .setMimeType(ContentService.MimeType.JSON);
   }
@@ -262,7 +287,15 @@ function doGet(e) {
   // 3. Cold Start: Scrape immediately if no cache exists
   const initialFetch = fetchAndPushCebBills();
   if (initialFetch.success) {
-    return jsonResponse(initialFetch.data);
+    const resp = initialFetch.data;
+    resp.cached_source = 'live_scrape';
+    resp.cache_source = 'live_scrape';
+    resp.cache_info = {
+      status: 'MISS',
+      source: 'live_scrape',
+      cached_at: resp.last_updated
+    };
+    return jsonResponse(resp);
   } else {
     return jsonResponse({
       status: 'error',
